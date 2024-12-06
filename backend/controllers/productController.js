@@ -1,5 +1,6 @@
 const Product = require('../models/productModel');
-
+const ErrorHandler = require('../utils/errorhandler');
+const mongoose = require('mongoose');
 //Create a new Product -- Admin Route 
 exports.createProduct = async (req,res,next) => {
 
@@ -24,22 +25,42 @@ exports.getAllProducts = async(req,res)=>{
 };
 
 // Get a single product -- Public Route
-exports.getProductDetails = async (req,res,next) => {
-    
-    const product = await Product.findById(req.params.id);
-    
-    if(!product){
-        return res.status(404).json({
-            success: false,
-            message: 'Product not found'
-        })
+exports.getProductDetails = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Log the incoming ID
+        console.log("Product ID:", id);
+
+        // Validate the ID
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            console.error("Invalid Product ID");
+            return next(new ErrorHandler("Invalid Product ID", 400));
+        }
+
+        // Fetch the product
+        const product = await Product.findById(id);
+        console.log("Inside Product");
+
+        // Handle case where product is not found
+        if (!product) {
+            console.error("Product Not Found");
+            return next(new ErrorHandler("Product not found", 404));
+        }
+
+        console.log("Product Found");
+
+        // Return the product details
+        res.status(200).json({
+            success: true,
+            product, // Single product
+        });
+    } catch (error) {
+        console.error("Server Error:", error);
+        next(new ErrorHandler("Internal Server Error", 500)); // Pass to your global error handler
     }
-    
-    res.status(200).json({
-        success: true,
-        product // single product
-    })
-}
+};
+
 
 // Update a Product -- Admin Route
 
