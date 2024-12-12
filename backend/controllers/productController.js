@@ -19,8 +19,10 @@ exports.createProduct = catchAsyncErrors(
 // Get all products -- Public Route
 exports.getAllProducts = catchAsyncErrors(
     async(req,res)=>{
-
-       const apiFeature = new ApiFeatures(Product.find(), req.query).search().filter();
+    
+        console.log('accessing all products');
+        
+        const apiFeature = new ApiFeatures(Product.find(), req.query).search().filter();
 
         const products = await apiFeature.query;
         

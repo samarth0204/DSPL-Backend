@@ -17,5 +17,5 @@ module.exports = (err, req, res, next)=> {
         error: err,
         
     });
-    console.log("Response from server")
+    console.log("Response from server : error.js ")
 }
