@@ -17,26 +17,11 @@ const isAuthticatedUser = catchAsyncErrors(async (req, res, next)=>{
 
     req.user = await User.findById(decodedData.id);
 
+    if (!req.user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+    console.log("Authenticated user:", req.user.role); // Debugging
     next();
 
 });
 module.exports = isAuthticatedUser;
-
-
-const authorizeRoles = (...roles)=>{
-    return (req, res, next)=>{
-
-        if(!roles.includes(req.user.role)){
-            return next(
-                new ErrorHandler(
-                    `Role: ${req.user.role} is not allowed to be authorized`, 403
-                )
-        );
-        
-        }
-
-        next();
-    };
-};
-
-module.exports = authorizeRoles;
