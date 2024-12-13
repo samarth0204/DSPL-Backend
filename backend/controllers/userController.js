@@ -6,6 +6,9 @@ const User = require('../models/userModel');
 
 const sendToken = require('../utils/jwtToken');
 
+const sendEmail = require('../utils/sendEmail.js');
+
+
 // Register a User
 
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
@@ -64,5 +67,57 @@ exports.logout = catchAsyncErrors(async (req, res, next) => {
         success: true,
         message: 'User logged out successfully'
     });
+});
+
+
+// Forgot password
+
+exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
+    const user = await User.findOne({ email: req.body.email });
+    
+    if (!user) {
+        return next(new ErrorHandler('No user found with that email', 404));
+    }
+
+    // get resetPasswordToken
+    const resetToken = user.getPasswordResetToken();
+
+    console.log(`usercontroller/  get resetPasswordToken : ${resetToken}`);
+    try {
+        await user.save({ validateBeforeSave: false });
+    } catch (error) {
+        console.error("Error saving user:", error);
+        return next(new ErrorHandler("Failed to save user data. Please try again.", 500));
+    }
+
+    // url for reset password
+    const resetPasswordUrl = `${req.protocol}://${req.get("host")}/api/v1/password/reset/${resetToken}`;
+
+    const message = `Your reset password token : \n \n ${resetPasswordUrl}, \n \n If you have not requested this email then please ignore it.`;
+
+    try {
+        await sendEmail({
+            // send email here
+            email: user.email,
+            subject: 'DSPL Password Reset',
+            message
+        });
+        res.status(200).json({
+            success: true,
+            message: 'Reset password email sent successfully'
+        });
+    }
+    catch(error){
+
+        console.error("Error sending email:", error);
+
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save({validateBeforeSave: false});
+
+        return next(new ErrorHandler('Failed to send email. Please try again', 500));
+    }
+
 });
 
