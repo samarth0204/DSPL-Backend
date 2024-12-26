@@ -8,6 +8,7 @@ const sendToken = require('../utils/jwtToken');
 
 const sendEmail = require('../utils/sendEmail.js');
 
+const crypto = require('crypto');
 
 // Register a User
 
@@ -121,3 +122,156 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
 
 });
 
+// Reset password
+exports.resetPassword = catchAsyncErrors(async (req, res, next) => {
+
+    // Creating token hash
+    const resetPasswordToken = crypto
+        .createHash('sha256')
+        .update(req.params.token)
+        .digest('hex');
+
+    const user = await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+        return next(new ErrorHandler('Invalid token or token expired', 400));
+    }
+    //Password does not match
+    if(req.body.password !== req.body.confirmPassword){
+        return next(new ErrorHandler('Passwords do not match', 400));
+    }
+    // Update password
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    // Generate and send token
+    // user will login
+    sendToken(user, 200, res);
+
+});
+
+// Get user profile
+
+exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
+    const user = await User.findById(req.user.id).select('-password');
+    res.status(200).json({
+        success: true,
+        user
+    });
+});
+// Update user password
+exports.updatePassword = catchAsyncErrors(async (req, res, next) => {
+    try {
+        // Fetch the user with their password
+        const user = await User.findById(req.user.id).select('+password');
+
+        // Check if user exists
+        if (!user) {
+            return next(new ErrorHandler('User not found', 404));
+        }
+
+        console.log(user);
+        console.log(typeof user.comparePassword); // Should output "function"
+
+        // Check if the old password matches the user's current password
+        const isPasswordMatched = await user.comparePassword(req.body.oldpassword);
+        if (!isPasswordMatched) {
+            return next(new ErrorHandler('Incorrect current password', 401));
+        }
+
+        // Validate the presence of newpassword and confirmPassword
+        if (!req.body.newpassword || !req.body.confirmPassword) {
+            return next(new ErrorHandler('New password and confirmation are required', 400));
+        }
+
+        // Check if new passwords match
+        if (req.body.newpassword !== req.body.confirmPassword) {
+            return next(new ErrorHandler('Passwords do not match', 400));
+        }
+
+        // Update the user's password
+        user.password = req.body.newpassword;
+
+        // Save the updated user to the database
+        await user.save();
+
+        // Send token to log the user in after password update
+        sendToken(user, 200, res);
+
+    } catch (error) {
+        console.error('Error in updating password:', error);
+        return next(new ErrorHandler('Failed to update password. Please try again.', 500));
+    }
+});
+
+
+// Update User Profile --Admin
+
+exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
+    const newUserData = {
+        name: req.body.name,
+        email: req.body.email,
+        role: req.body.role
+       // avatar: req.body.avatar
+    }
+    //we will add cloudinary later
+
+    const user = await User.findByIdAndUpdate(req.params.id, newUserData, { 
+        new: true,
+        runValidators: true,
+        useFindAndModify:false
+    });
+
+    if (!user) {
+        return next(new ErrorHandler(`User does not exist with Id: ${req.params.id}`, 404));
+    }
+
+    res.status(200).json({
+        success: true,
+    });
+});
+
+// Delete User (Admin)
+
+exports.deleteUser = catchAsyncErrors(async (req, res, next) => {
+    const user = await User.findById(req.params.id);
+
+    //  //we will remove cloudinary later
+    if (!user) {
+        return next(new ErrorHandler(`User does not exist with Id: ${req.params.id}`, 404));
+    }
+    await user.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        message: 'User deleted successfully'
+    });
+});
+
+// Get All Users (Admin)
+exports.getAllUsers = catchAsyncErrors(async (req, res, next) => {
+    const users = await User.find().select('-password');
+    res.status(200).json({
+        success: true,
+        users
+    });
+});
+
+
+// Get Single Users (Admin)
+exports.getSingleUser = catchAsyncErrors(async (req, res, next) => {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+        return next(new ErrorHandler(`User does not exist with Id: ${req.params.id}`, 404));
+    }
+    res.status(200).json({
+        success: true,
+        user
+    });
+});
