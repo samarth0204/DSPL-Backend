@@ -20,8 +20,6 @@ exports.createProduct = catchAsyncErrors(
 // Get all products -- Public Route
 exports.getAllProducts = catchAsyncErrors(
     async(req,res)=>{
-    
-        console.log('accessing all products');
         
         const apiFeature = new ApiFeatures(Product.find(), req.query).search().filter();
 
@@ -41,15 +39,12 @@ exports.getProductDetails = catchAsyncErrors(
             
             // Fetch the product
             const product = await Product.findById(req.params.id);
-            console.log("Inside Product");
     
             // Handle case where product is not found
             if (!product) {
                 console.error("Product Not Found");
                 return next(new ErrorHandler("Product not found", 404));
             }
-    
-            console.log("Product Found");
     
             // Return the product details
             res.status(200).json({
@@ -148,9 +143,8 @@ exports.createProductReview = catchAsyncErrors(async (req, res, next) => {
 
     product.ratings= avg / product.reviews.length;
 
-    console.log(product.ratings); 
-
     await product.save({ validateBeforeSave: false });
+
     res.status(200).json({
         success: true,
         message: 'Review created or updated successfully'
@@ -160,7 +154,6 @@ exports.createProductReview = catchAsyncErrors(async (req, res, next) => {
 // Get all reviews of a product
 exports.getProductReviews = catchAsyncErrors(async (req, res, next) => {
     const productId = req.params.id; // Get product ID from route parameter
-    console.log("Product ID:", productId);
 
     const product = await Product.findById(productId); // Fetch product by ID
 
@@ -220,13 +213,9 @@ exports.deleteReviews = catchAsyncErrors(async (req, res, next) => {
     const { id: reviewId } = req.params; // Review ID from URL path
     const { productId } = req.query;    // Product ID from query parameters
 
-    console.log("Received Product ID:", productId); // Check if this is now correct
-    console.log("Received Review ID:", reviewId);
-
     const product = await Product.findById(productId);
 
     if (!product) {
-        console.log("Product not found in the database.");
         return next(new ErrorHandler("Product not found", 404));
     }
 
